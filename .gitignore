@@ -1,0 +1,5 @@
+.DS_Store
+collector/build/
+autoinstrument/otelc/legacy-instrumented
+autoinstrument/otelc/.otelc/
+autoinstrument/otelc/.otelc-build/

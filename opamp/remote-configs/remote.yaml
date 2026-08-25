@@ -1,0 +1,13 @@
+# Fleet-wide change: stamp every span with the config version.
+processors:
+  attributes/fleet:
+    actions:
+      - key: fleet.config.version
+        value: "2"
+        action: upsert
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, attributes/fleet, batch]
+      exporters: [otlp]

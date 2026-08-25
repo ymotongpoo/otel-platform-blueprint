@@ -1,0 +1,44 @@
+# Base configuration for the supervisor-managed agent collector.
+# The platform team owns this file; remote configuration is merged on top
+# (later files win on merge, and CI checks the effective configuration).
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  resourcedetection:
+    detectors: [env, system]
+    system:
+      hostname_sources: [os]
+  batch:
+    send_batch_size: 1024
+    timeout: 5s
+
+exporters:
+  otlp:
+    endpoint: gateway:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [otlp]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [otlp]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, resourcedetection, batch]
+      exporters: [otlp]

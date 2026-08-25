@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  registry:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: weaver registry check (policies)
+        run: |
+          docker run --rm -v "$PWD":/work -w /work otel/weaver:v0.25.1 \
+            registry check -r registry/model -p registry/policies
+      - name: weaver registry diff against main
+        if: github.event_name == 'pull_request'
+        run: |
+          docker run --rm -v "$PWD":/work -w /work otel/weaver:v0.25.1 \
+            registry diff -r registry/model \
+            --baseline-registry "https://github.com/${{ github.repository }}.git@${{ github.base_ref }}[registry/model]"
+      - name: verify generated code is up to date
+        run: |
+          docker run --rm -v "$PWD":/work -w /work otel/weaver:v0.25.1 \
+            registry generate -r registry/model --templates registry/templates go sdk/semconv
+          git diff --exit-code sdk/semconv
+
+  go:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: build sdk
+        run: cd sdk && go vet ./... && go build ./...
+      - name: build services
+        run: cd services && go vet ./... && go build ./...
+      - name: build opamp server
+        run: cd opamp/server && go vet ./... && go build ./...
+
+  collector:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: OCB build
+        run: docker build -t otelcol-internal:ci collector
+      - name: validate configs with the built collector
+        run: |
+          docker run --rm -v "$PWD/collector/configs:/etc/otelcol:ro" \
+            -e GATEWAY_ENDPOINT=gateway:4317 \
+            otelcol-internal:ci validate --config /etc/otelcol/agent.yaml
+          docker run --rm -v "$PWD/collector/configs:/etc/otelcol:ro" \
+            -e TEMPO_ENDPOINT=tempo:4317 -e MIMIR_ENDPOINT=http://mimir:9009/otlp \
+            -e LOKI_ENDPOINT=http://loki:3100/otlp \
+            otelcol-internal:ci validate --config /etc/otelcol/gateway.yaml

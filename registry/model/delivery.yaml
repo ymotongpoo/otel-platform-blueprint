@@ -1,0 +1,16 @@
+groups:
+  - id: registry.com.example.delivery
+    type: attribute_group
+    display_name: Delivery Attributes
+    brief: Attributes of the delivery domain.
+    attributes:
+      - id: com.example.delivery.id
+        type: string
+        stability: development
+        brief: Unique identifier of a delivery.
+        examples: ["dlv-2026-000123"]
+      - id: com.example.delivery.carrier
+        type: string
+        stability: development
+        brief: Identifier of the delivery carrier.
+        examples: ["carrier-a"]

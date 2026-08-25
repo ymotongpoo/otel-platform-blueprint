@@ -1,0 +1,71 @@
+# Gateway collector: organization-wide policy enforcement point.
+# Tail sampling, attribute governance (PII redaction), backend routing and auth.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_percentage: 80
+    spike_limit_percentage: 20
+  # Organization policy: drop known-sensitive attributes before they reach any backend.
+  transform/redact:
+    error_mode: ignore
+    trace_statements:
+      - delete_key(span.attributes, "user.email")
+      - delete_key(span.attributes, "http.request.header.authorization")
+    log_statements:
+      - delete_key(log.attributes, "user.email")
+  tail_sampling:
+    decision_wait: 5s
+    policies:
+      - name: keep-errors
+        type: status_code
+        status_code:
+          status_codes: [ERROR]
+      - name: baseline
+        type: probabilistic
+        probabilistic:
+          sampling_percentage: 10
+  batch:
+    send_batch_size: 2048
+    timeout: 5s
+
+exporters:
+  otlp/tempo:
+    endpoint: ${env:TEMPO_ENDPOINT}
+    tls:
+      insecure: true
+  otlphttp/mimir:
+    endpoint: ${env:MIMIR_ENDPOINT}
+    tls:
+      insecure: true
+  otlphttp/loki:
+    endpoint: ${env:LOKI_ENDPOINT}
+    tls:
+      insecure: true
+
+extensions:
+  health_check:
+    endpoint: 0.0.0.0:13133
+
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/redact, tail_sampling, batch]
+      exporters: [otlp/tempo]
+    metrics:
+      receivers: [otlp]
+      processors: [memory_limiter, batch]
+      exporters: [otlphttp/mimir]
+    logs:
+      receivers: [otlp]
+      processors: [memory_limiter, transform/redact, batch]
+      exporters: [otlphttp/loki]

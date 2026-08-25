@@ -1,0 +1,5 @@
+templates:
+  - template: semconv.go.j2
+    filter: semconv_attributes | map(select(.name | startswith("com.example.")))
+    application_mode: single
+    file_name: semconv.go
