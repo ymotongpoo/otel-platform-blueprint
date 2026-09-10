@@ -25,7 +25,8 @@ case "${1:-}" in
         ;;
     live-check)
         docker run --rm -p 4317:4317 -v "$(pwd)":/work -w /work "${WEAVER_IMAGE}" \
-            registry live-check -r registry/model
+            registry live-check -r registry/model \
+            --otlp-grpc-address 0.0.0.0 --otlp-grpc-port 4317
         ;;
     *)
         echo "usage: $0 {check|generate|diff <baseline-ref>|live-check}" >&2

@@ -25,11 +25,30 @@ OpenTelemetryで作る」（Platform Engineering Kaigi 2026 登壇の解説資�
 
 ```console
 $ cd deploy
+$ docker compose build gateway
 $ docker compose up -d --build
 ```
 
-初回はCollectorのOCBビルドとサービスのビルドが走ります。起動後、
-http://localhost:3000 でGrafanaが開きます（匿名Adminでログイン済み）。
+`gateway` を先にビルドするのは、Supervisor管理のagentイメージが
+`gateway` のビルド成果物である `otelcol-internal:dev` を参照しているためです。
+composeはビルドの順序を保証しないので、一括ビルドだけでは
+`pull access denied` で失敗することがあります。
+
+初回はCollectorのOCBビルドとサービスのビルドが走ります。4コアの環境で
+10分ほどかかります。起動後、http://localhost:3000 でGrafanaが開きます
+（匿名Adminでログイン済み）。
+
+ホストで別のCollectorやGrafana Alloyが4317/4318を使っている場合、agentの
+ポート公開が `address already in use` で失敗します。その場合は
+`deploy/docker-compose.override.yaml` を置いて公開ポートをずらしてください。
+
+```yaml
+services:
+  agent:
+    ports: !override
+      - "14317:4317"
+      - "14318:4318"
+```
 
 ```console
 $ curl localhost:8080/checkout   # frontend → backend の分散トレース
@@ -46,6 +65,27 @@ $ ./registry/weaver.sh check      # 構文・参照・Regoポリシー検査
 $ ./registry/weaver.sh generate   # Go定数を sdk/semconv/ へ生成
 $ ./registry/weaver.sh live-check # OTLPを受けて実測を検査
 ```
+
+live-checkはコンテナ内でOTLPを待ち受けるため、リスンアドレスを
+`0.0.0.0` にしないとコンテナ外からのテレメトリーが届きません
+（`weaver.sh` はこの指定を含んでいます）。
+
+## ゼロコード計装の実験
+
+```console
+$ cd autoinstrument/otelc
+$ go run go.opentelemetry.io/otelc/tool/cmd/otelc pin
+$ go run go.opentelemetry.io/otelc/tool/cmd/otelc go build -o legacy-instrumented .
+```
+
+`otelc pin` は `otel.instrumentation.go` と `go.mod` の `require` / `replace` を
+生成します。`replace` の宛先は作業ディレクトリ配下の絶対パスになるため、
+**これらの生成物はコミットしません**（`.gitignore` で除外しています）。
+生成物が残った状態で `pin` を実行すると
+`package ... is not part of a module` で失敗します。
+
+`services/uninstrumented` は `:8082` 固定なので、ビルドしたバイナリを
+手元で動かすときは `docker compose stop uninstrumented` を先に実行します。
 
 ## フリート管理の実験
 
