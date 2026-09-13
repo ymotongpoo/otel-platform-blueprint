@@ -14,7 +14,8 @@ Go 1.26.0 の環境で実施した。以下、本文の数値はこの回のも�
 | OpenTelemetry Collector（OCBビルド） | v0.159.0 |
 | OCB (cmd/builder) | v0.159.0 |
 | opentelemetry-go | v1.45.0（logのみ v0.21.0） |
-| opentelemetry-go-contrib（autoexport、autoprop、otelhttp、otelslog） | v0.70.0系 |
+| opentelemetry-go-contrib（autoexport、autoprop、otelhttp） | v0.70.0 |
+| opentelemetry-go-contrib（otelslog） | v0.20.0 |
 | opamp-go | v0.23.0 |
 | OpAMP Supervisor | 0.159.0（stability: alpha） |
 | Weaver | v0.25.1 |
