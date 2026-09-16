@@ -78,8 +78,13 @@ Go 1.26.0 の環境で実施した。以下、本文の数値はこの回のも�
   生成。`com.example.delivery.id` → `ComExampleDeliveryId` のPascalCase変換を確認。
   **生成結果は既存のコミット済みファイルと一致し、差分が出ない**（再現性がある）
 - `weaver registry live-check`: **コンテナで動かす場合は
-  `--otlp-grpc-address 0.0.0.0` が要る。** 既定のリスンアドレスではコンテナ外からの
-  OTLPが届かず、`total seen: 0.0%` のまま何も検査されない
+  `--otlp-grpc-address 0.0.0.0 --otlp-grpc-port 4317` を明示した。** 指定なしでは
+  コンテナ外からのOTLPが届かず、`total seen: 0.0%` のまま何も検査されなかった。
+  ただしv0.25.1のデフォルト値はこの指定と同じ `0.0.0.0:4317`（`crates/weaver_config/src/live_check.rs`）
+  なので、**原因はデフォルトのリスンアドレスではない**。ポート公開の状態や
+  デフォルト10秒の無通信タイムアウトが関わった可能性があり、原因は未特定。
+  なおv0.26.0でデフォルトは `127.0.0.1` に変更されたため、その版以降は
+  コンテナ利用時に明示指定が必要になる
 - live-checkにtelemetrygenからスパンを送ると、レジストリ未登録の
   `myteam.rogue.attr` を violation として報告。`com.example.delivery.id` は
   violation にならないが、**`[improvement] stability = development` の指摘は付く**
