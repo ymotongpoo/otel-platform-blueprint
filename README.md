@@ -95,12 +95,38 @@ Supervisor管理のagentへ配布します。状態は http://localhost:4321/sta
 
 ## 書籍との対応
 
+章番号は[Zenn本](https://zenn.dev/ymotongpoo/books/observability-platform-with-otel)の章番号です。
+
 | 章 | ディレクトリ |
 |---|---|
-| 10章 SDKディストリビューション | sdk/ |
-| 20章 ゼロコード計装 | autoinstrument/、services/uninstrumented/ |
-| 30章 Collector層 | collector/、deploy/ |
-| 40章 フリート管理 | opamp/ |
-| 50章 レジストリとWeaver | registry/、sdk/semconv/ |
-| 60章 AIワークロードの観測 | services/ai-app/ |
-| 70章 AIによる読み取り | ai-ops/ |
+| 2章 SDKディストリビューションの設計 | sdk/ |
+| 3章 ゼロコード計装の配布 | autoinstrument/、services/uninstrumented/ |
+| 4章 Collector層の設計とカスタムビルド | collector/、deploy/ |
+| 5章 OpAMPによるCollectorフリート管理 | opamp/ |
+| 6章 セマンティック規約のガバナンスとWeaver | registry/、sdk/semconv/ |
+| 7章 AIワークロードのテレメトリー | services/ai-app/ |
+| 8章 AIがテレメトリーを読む | ai-ops/ |
+| 9章 リファレンス実装で動かす | リポジトリ全体 |
+
+## 動かすときの注意
+
+### ポートの衝突
+
+手元で別のCollectorやGrafana Alloyが動いている場合、エージェントのポート公開が `address already in use` で失敗します。`deploy/docker-compose.override.yaml` で公開ポートをずらしてください。
+
+```bash
+# 使用中のポートを確認する
+ss -ltnp | grep -E '4317|4318'
+```
+
+### Tempoの起動待ち
+
+Tempoは起動後15秒から20秒ほど `/ready` を返さず、その間に届いたテレメトリーを保存しません。起動直後に送ったトレースは保存されないため、準備完了を確認してからリクエストを送ってください。
+
+```bash
+until curl -sf http://localhost:3200/ready > /dev/null; do sleep 2; done
+```
+
+### live-checkのリッスンアドレス
+
+`weaver registry live-check` をコンテナで動かす場合は、リッスンアドレスとポートを明示します。`registry/weaver.sh` では `--otlp-grpc-address 0.0.0.0 --otlp-grpc-port 4317` を指定しています。Weaver v0.26.0からデフォルトが `127.0.0.1` になったため、この指定がないとコンテナ外から届きません。
