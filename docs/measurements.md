@@ -137,15 +137,19 @@ canary、テレメトリー到達の監視、サーバー側の再配布手順�
 
 - インストール: `go install go.opentelemetry.io/otelc/tool/cmd/otelc@v1.1.0`
   （モジュールルートではなく tool/cmd/otelc がコマンド）
-- **`otelc pin` は、生成済みの `otel.instrumentation.go` と、`replace` 行を
-  含む `go.mod` が残っている状態では失敗する**
-  （`package ... is not part of a module`）。`replace` の宛先が
-  `.otelc-build/` 配下の絶対パスであり、別のマシンでは解決できないためである。
-  **`otel.instrumentation.go`、`go.sum`、`go.mod` の `require`/`replace` を
-  除いた状態から `otelc pin` を実行する**と、依存が解決されて再生成される。
-  したがって**これらの生成物はリポジトリにコミットしない**
-- 計装コードゼロのHTTPサービスに対して `otelc pin` → `otelc go build`。
-  バイナリは 26,026,623 バイト（約25MB、計装ランタイム込み）
+- **`otelc pin` は使わない。** upstream が
+  [#585](https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/issues/585)
+  で「pinが生成した `otel.instrumentation.go` をコミットする使い方はまだ
+  未対応」と明記している。計装パッケージは擬似バージョン
+  （`v0.0.0-00010101000000-000000000000`）で otelc 実行ファイルの内側でしか
+  解決できないため、生成物が残った状態では
+  `package ... is not part of a module` で失敗する。`replace` の宛先が
+  `.otelc-build/` 配下の絶対パスになる問題も同じ理由による。
+  **`otelc go build` はビルドの間だけ構成を生成する**ので、こちらを使う
+- 計装コードゼロのHTTPサービスに対して `otelc go build`。
+  バイナリは 26,026,623 バイト（約25MB、計装ランタイム込み）。
+  2026年9月17日に `go tool otelc go build` で再確認したところ
+  26,022,431 バイトで、計装パッケージ5つが埋め込まれていた
 - 実行ログに「trace provider initialized with auto-export」「runtime metrics enabled」。
   100リクエスト → Tempoに **11トレース**到達（tail sampling通過後）
 - 環境変数はディストリビューションと同じ `OTEL_SERVICE_NAME` と

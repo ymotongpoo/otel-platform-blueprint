@@ -22,7 +22,12 @@ jobs:
             --baseline-registry "https://github.com/${{ github.repository }}.git@${{ github.base_ref }}[registry/model]"
       - name: verify generated code is up to date
         run: |
-          docker run --rm -v "$PWD":/work -w /work otel/weaver:v0.25.1 \
+          # Weaver's image runs as UID 1000 (weaver), but the checkout is owned
+          # by the runner user, so the container cannot write into the mount
+          # ("Writing of the generated code ... failed: Permission denied").
+          # Run as the runner's own UID to make the write succeed.
+          docker run --rm --user "$(id -u):$(id -g)" \
+            -v "$PWD":/work -w /work otel/weaver:v0.25.1 \
             registry generate -r registry/model --templates registry/templates go sdk/semconv
           git diff --exit-code sdk/semconv
 
@@ -47,11 +52,18 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version: "1.26"
-      - name: otelc pin and build from a clean module
+      - name: otelc build from a clean module
         run: |
           cd autoinstrument/otelc
-          go run go.opentelemetry.io/otelc/tool/cmd/otelc pin
-          go run go.opentelemetry.io/otelc/tool/cmd/otelc go build -o legacy-instrumented .
+          # `otelc pin` is deliberately not used here. Upstream states that
+          # committing a pin-generated otel.instrumentation.go is not supported
+          # yet (opentelemetry-go-compile-instrumentation#585): the
+          # instrumentation packages are pseudo-versioned and resolve only
+          # inside the otelc executable, so `pin` fails with "package ... is
+          # not part of a module" outside a local workflow.
+          # `otelc go build` generates the configuration for the duration of
+          # the build, which is the supported zero-configuration path.
+          go tool otelc go build -o legacy-instrumented .
           ./legacy-instrumented & sleep 5
           curl -sf localhost:8082/legacy
           kill %1

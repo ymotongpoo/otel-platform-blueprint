@@ -74,15 +74,19 @@ live-checkはコンテナ内でOTLPを待ち受けるため、リスンアドレ
 
 ```console
 $ cd autoinstrument/otelc
-$ go run go.opentelemetry.io/otelc/tool/cmd/otelc pin
-$ go run go.opentelemetry.io/otelc/tool/cmd/otelc go build -o legacy-instrumented .
+$ go tool otelc go build -o legacy-instrumented .
 ```
 
-`otelc pin` は `otel.instrumentation.go` と `go.mod` の `require` / `replace` を
-生成します。`replace` の宛先は作業ディレクトリ配下の絶対パスになるため、
-**これらの生成物はコミットしません**（`.gitignore` で除外しています）。
-生成物が残った状態で `pin` を実行すると
-`package ... is not part of a module` で失敗します。
+`otelc go build` は、ビルドの間だけ計装の構成を生成します。`otelc pin` で
+`otel.instrumentation.go` を作る手順は使いません。upstream が
+[#585](https://github.com/open-telemetry/opentelemetry-go-compile-instrumentation/issues/585)
+で「pinが生成したファイルをコミットする使い方はまだ未対応」と明記しており、
+計装パッケージは擬似バージョンでotelc実行ファイルの内側でしか解決できないため、
+ローカル以外では `package ... is not part of a module` で失敗します。
+
+手元で `otelc pin` を試す場合は、生成物（`otel.instrumentation.go` と
+`go.mod` の `replace`）をコミットしないでください（`.gitignore` で除外して
+います）。
 
 `services/uninstrumented` は `:8082` 固定なので、ビルドしたバイナリを
 手元で動かすときは `docker compose stop uninstrumented` を先に実行します。
