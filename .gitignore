@@ -3,6 +3,5 @@ collector/build/
 autoinstrument/otelc/legacy-instrumented
 autoinstrument/otelc/.otelc/
 autoinstrument/otelc/.otelc-build/
-autoinstrument/otelc/go.sum
 autoinstrument/otelc/otel.instrumentation.go
 deploy/docker-compose.override.yaml

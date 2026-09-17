@@ -25,10 +25,16 @@ jobs:
           # Weaver's image runs as UID 1000 (weaver), but the checkout is owned
           # by the runner user, so the container cannot write into the mount
           # ("Writing of the generated code ... failed: Permission denied").
-          # Run as the runner's own UID to make the write succeed.
+          #
+          # Running as the runner's UID fixes the write, but then the user has
+          # no home directory inside the container and Weaver fails earlier
+          # with "Cache directory not created: Permission denied". Point HOME
+          # and the cache at a writable path under the mount.
           docker run --rm --user "$(id -u):$(id -g)" \
+            -e HOME=/work/.weaver-home \
             -v "$PWD":/work -w /work otel/weaver:v0.25.1 \
             registry generate -r registry/model --templates registry/templates go sdk/semconv
+          rm -rf .weaver-home
           git diff --exit-code sdk/semconv
 
   go:
